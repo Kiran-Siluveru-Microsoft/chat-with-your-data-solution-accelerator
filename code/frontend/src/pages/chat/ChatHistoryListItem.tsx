@@ -17,15 +17,13 @@ import {
   TextField,
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-
-import { historyList } from "../../api";
 import { Conversation } from "../../api/models";
 // import { AppStateContext } from '../../state/AppProvider'
 
 import { GroupedChatHistory } from "./ChatHistoryList";
-
+import { AppStateContext } from '../../state/AppProvider'
 import styles from "./ChatHistoryPanel.module.css";
-
+import { historyDelete, historyList, historyRename } from '../../api'
 const OFFSET_INCREMENT = 5;
 interface ChatHistoryListItemCellProps {
   item?: Conversation;
@@ -64,11 +62,12 @@ export const ChatHistoryListItemCell: React.FC<
   const [hideDeleteDialog, { toggle: toggleDeleteDialog }] = useBoolean(true);
   const [errorDelete, setErrorDelete] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [errorRename, setErrorRename] = useState<string | undefined>(undefined);
   const [textFieldFocused, setTextFieldFocused] = useState(false);
   const textFieldRef = useRef<ITextField | null>(null);
   const [isButtonDisabled, setIsButtonDisabled] = useState<boolean>(false);
-
+  const appStateContext = React.useContext(AppStateContext)
   const isSelected = item?.id === selectedConvId;
   const dialogContentProps = {
     type: DialogType.close,
@@ -95,32 +94,32 @@ export const ChatHistoryListItemCell: React.FC<
     }
   }, [textFieldFocused]);
 
-  // useEffect(() => {
-  //   if (appStateContext?.state.currentChat?.id !== item?.id) {
-  //     setEdit(false)
-  //     setEditTitle('')
-  //   }
-  // }, [appStateContext?.state.currentChat?.id, item?.id])
+  useEffect(() => {
+    if (appStateContext?.state.currentChat?.id !== item?.id) {
+      setEdit(false)
+      setEditTitle('')
+    }
+  }, [appStateContext?.state.currentChat?.id, item?.id])
 
-  // useEffect(() => {
-  //   let v = appStateContext?.state.isRequestInitiated
-  //   if (v != undefined) setIsButtonDisabled(v && isSelected)
-  // }, [appStateContext?.state.isRequestInitiated])
+  useEffect(() => {
+    let v = appStateContext?.state.isRequestInitiated
+    if (v != undefined) setIsButtonDisabled(v && isSelected)
+  }, [appStateContext?.state.isRequestInitiated])
 
-  // const onDelete = async () => {
-  //   appStateContext?.dispatch({ type: 'TOGGLE_LOADER' })
-  //   const response = await historyDelete(item.id)
-  //   if (!response.ok) {
-  //     setErrorDelete(true)
-  //     setTimeout(() => {
-  //       setErrorDelete(false)
-  //     }, 5000)
-  //   } else {
-  //     appStateContext?.dispatch({ type: 'DELETE_CHAT_ENTRY', payload: item.id })
-  //   }
-  //   appStateContext?.dispatch({ type: 'TOGGLE_LOADER' })
-  //   toggleDeleteDialog()
-  // }
+  const onDelete = async () => {
+    appStateContext?.dispatch({ type: 'TOGGLE_LOADER' })
+    const response = await historyDelete(item.id)
+    if (!response.ok) {
+      setErrorDelete(true)
+      setTimeout(() => {
+        setErrorDelete(false)
+      }, 5000)
+    } else {
+      appStateContext?.dispatch({ type: 'DELETE_CHAT_ENTRY', payload: item.id })
+    }
+    appStateContext?.dispatch({ type: 'TOGGLE_LOADER' })
+    toggleDeleteDialog()
+  }
 
   const onEdit = () => {
     setEdit(true);
@@ -154,6 +153,7 @@ export const ChatHistoryListItemCell: React.FC<
   //     return
   //   }
   //   setRenameLoading(true)
+  //   console.log("editTitle:::", editTitle)
   //   const response = await historyRename(item.id, editTitle)
   //   if (!response.ok) {
   //     setErrorRename('Error: could not rename item')
@@ -167,10 +167,42 @@ export const ChatHistoryListItemCell: React.FC<
   //   } else {
   //     setRenameLoading(false)
   //     setEdit(false)
-  //     appStateContext?.dispatch({ type: 'UPDATE_CHAT_TITLE', payload: { ...item, title: editTitle } as Conversation })
+  //     // update 1
+  //     // appStateContext?.dispatch({ type: 'UPDATE_CHAT_TITLE', payload: { ...item, title: editTitle } as Conversation })
   //     setEditTitle('')
   //   }
   // }
+  const handleSaveEdit = async (e?: any) => {
+    if (errorRename || renameLoading) {
+      return;
+    }
+    if (editTitle === item.title) {
+      setErrorRename('Error: Enter a new title to proceed.');
+      setTimeout(() => {
+        setErrorRename(undefined);
+        if (textFieldRef.current) {
+          textFieldRef.current.focus();
+        }
+      }, 5000);
+      return;
+    }
+    setRenameLoading(true);
+    console.log("editTitle:::", editTitle);
+    const response = await historyRename(item.id, editTitle);
+    if (!response.ok) {
+      setErrorRename('Error: could not rename item');
+      setTimeout(() => {
+        setErrorRename(undefined);
+        if (textFieldRef.current) {
+          textFieldRef.current.focus();
+        }
+      }, 5000);
+    } else {
+      setRenameLoading(false);
+      setIsEditing(false);
+      setEditTitle('');
+    }
+  };
 
   const chatHistoryTitleOnChange = (e: any) => {
     setEditTitle(e.target.value);
@@ -181,15 +213,16 @@ export const ChatHistoryListItemCell: React.FC<
     setEditTitle("");
   };
 
-  // const handleKeyPressEdit = (e: any) => {
-  //   if (e.key === 'Enter') {
-  //     return handleSaveEdit(e)
-  //   }
-  //   if (e.key === 'Escape') {
-  //     cancelEditTitle()
-  //     return
-  //   }
-  // }
+  const handleKeyPressEdit = (e: any) => {
+    if (e.key === 'Enter') {
+      return handleSaveEdit(e)
+    }
+    if (e.key === 'Escape') {
+      cancelEditTitle()
+      return
+    }
+  }
+
   return (
     <Stack
       key={item.id}
@@ -197,11 +230,11 @@ export const ChatHistoryListItemCell: React.FC<
       aria-label="chat history item"
       className={styles.itemCell}
       onClick={() => handleSelectItem()}
-      // onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? handleSelectItem() : null)}
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? handleSelectItem() : null)}
       verticalAlign="center"
       // horizontal
-      // onMouseEnter={() => setIsHovered(true)}
-      // onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       styles={{
         root: {
           backgroundColor: isSelected ? '#e6e6e6' : 'transparent'
@@ -213,7 +246,7 @@ export const ChatHistoryListItemCell: React.FC<
           <Stack.Item style={{ width: "100%" }}>
             <form
               aria-label="edit title form"
-              // onSubmit={e => handleSaveEdit(e)} style={{ padding: '5px 0px' }}
+              onSubmit={e => handleSaveEdit(e)} style={{ padding: '5px 0px' }}
             >
               <Stack horizontal verticalAlign={"start"}>
                 <Stack.Item>
@@ -223,8 +256,9 @@ export const ChatHistoryListItemCell: React.FC<
                     value={editTitle}
                     placeholder={item.title}
                     onChange={chatHistoryTitleOnChange}
-                    // onKeyDown={handleKeyPressEdit}
+                    onKeyDown={handleKeyPressEdit}
                     // errorMessage={errorRename}
+                    // ref={textFieldRef}
                     disabled={errorRename ? true : false}
                   />
                 </Stack.Item>
@@ -238,8 +272,8 @@ export const ChatHistoryListItemCell: React.FC<
                       <IconButton
                         role="button"
                         disabled={errorRename !== undefined}
-                        // onKeyDown={e => (e.key === ' ' || e.key === 'Enter' ? handleSaveEdit(e) : null)}
-                        // onClick={e => handleSaveEdit(e)}
+                        onKeyDown={e => (e.key === ' ' || e.key === 'Enter' ? handleSaveEdit(e) : null)}
+                        onClick={e => handleSaveEdit(e)}
                         aria-label="confirm new title"
                         iconProps={{ iconName: "CheckMark" }}
                         styles={{ root: { color: "green", marginLeft: "5px" } }}
@@ -322,7 +356,7 @@ export const ChatHistoryListItemCell: React.FC<
         modalProps={modalProps}
       >
         <DialogFooter>
-          {/* <PrimaryButton onClick={onDelete} text="Delete" /> */}
+          <PrimaryButton onClick={onDelete} text="Delete" />
           <DefaultButton onClick={toggleDeleteDialog} text="Cancel" />
         </DialogFooter>
       </Dialog>

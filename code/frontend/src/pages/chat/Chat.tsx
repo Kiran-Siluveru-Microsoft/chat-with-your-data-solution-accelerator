@@ -46,7 +46,6 @@ import { Answer } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import Cards from "./Cards_contract/Cards";
 import Layout from "../layout/Layout";
-import HistoryPanel from "../../components/HistoryPanel/HistoryPanel";
 import ChatHistoryList from "./ChatHistoryList";
 
 const OFFSET_INCREMENT = 25;

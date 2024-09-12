@@ -84,3 +84,42 @@ export type Conversation = {
   updatedAt?: string;
 //   userId?: string;
 };
+
+
+export enum ChatHistoryLoadingState {
+  Loading = 'loading',
+  Success = 'success',
+  Fail = 'fail',
+  NotStarted = 'notStarted'
+}
+
+
+// export type CosmosDBHealth = {
+//   cosmosDB: boolean
+//   status: string
+// }
+
+// export enum CosmosDBStatus {
+//   NotConfigured = 'CosmosDB is not configured',
+//   NotWorking = 'CosmosDB is not working',
+//   InvalidCredentials = 'CosmosDB has invalid credentials',
+//   InvalidDatabase = 'Invalid CosmosDB database name',
+//   InvalidContainer = 'Invalid CosmosDB container name',
+//   Working = 'CosmosDB is configured and working'
+// }
+
+// export type FrontendSettings = {
+//   auth_enabled?: string | null
+//   feedback_enabled?: string | null
+//   ui?: UI
+//   sanitize_answer?: boolean
+// }
+
+export type UI = {
+  title: string
+  chat_title: string
+  chat_description: string
+  logo?: string
+  chat_logo?: string
+  show_share_button?: boolean
+}

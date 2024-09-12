@@ -5,6 +5,7 @@ import { Conversation } from "../../api/models";
 // import { AppStateContext } from '../../state/AppProvider'
 
 import { ChatHistoryListItemGroups } from "./ChatHistoryListItem";
+import { AppStateContext } from "../../state/AppProvider";
 
 interface ChatHistoryListProps {
   fetchingChatHistory: boolean;
